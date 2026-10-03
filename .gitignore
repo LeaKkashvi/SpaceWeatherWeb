@@ -1,0 +1,32 @@
+# --- Virtual environments ------------------------------------------------- #
+.venv/
+venv/
+env/
+ENV/
+
+# --- Python --------------------------------------------------------------- #
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Streamlit ------------------------------------------------------------ #
+.streamlit/secrets.toml
+
+# --- Data / caches -------------------------------------------------------- #
+*.log
+.cache/
+data/cache/
+
+# --- Editors / OS --------------------------------------------------------- #
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
