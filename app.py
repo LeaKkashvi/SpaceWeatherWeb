@@ -82,24 +82,144 @@ with tabs[0]:
 
 with tabs[1]:
     st.markdown('<h2 class="section-title">3D IONOSPHERE GLOBE</h2>', unsafe_allow_html=True)
-    np.random.seed(42); n=int(60+sim_kp*40)
-    df=pd.DataFrame({'lat':np.random.uniform(-75,75,n),'lon':np.random.uniform(-180,180,n),'int':np.random.uniform(sim_kp*5,sim_kp*30,n)})
-    fig=px.scatter_geo(df,lat='lat',lon='lon',size='int',color='int',projection='orthographic',height=600)
-    fig.update_traces(marker=dict(sizemin=2,opacity=0.35))
-    fig.update_geos(showland=True,landcolor='#151C28',showocean=True,oceancolor='#0B0E14',showcoastlines=True,coastlinecolor='#00F0FF',showcountries=True,countrycolor='#334155',bgcolor='rgba(0,0,0,0)')
-    fig.update_layout(margin=dict(l=0,r=0,t=0,b=0),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',coloraxis_showscale=False)
-    st.plotly_chart(fig,use_container_width=True,config={'scrollZoom':True,'responsive':True})
+    np.random.seed(42)
+    stations=[
+        ('Western USA / Colorado',40.03,-105.28),
+        ('Alaska / USA',64.84,-147.72),
+        ('Northeastern USA / Massachusetts',42.62,-71.49),
+        ('Central Canada / Ontario',45.42,-75.70),
+        ('Central Mexico / Mexico City',19.43,-99.13),
+        ('Central Chile / Santiago',-33.45,-70.67),
+        ('Southeastern Brazil / Sao Paulo',-23.55,-46.63),
+        ('Eastern Argentina / Buenos Aires',-34.60,-58.38),
+        ('Western Peru / Lima',-12.05,-77.04),
+        ('Northern Colombia / Bogota',4.71,-74.07),
+        ('Northern Scandinavia / Sweden',67.86,20.23),
+        ('Arctic Norway / Tromso',69.65,18.96),
+        ('Western Europe / United Kingdom',51.51,-0.13),
+        ('Central Europe / Germany',52.52,13.40),
+        ('Southern Europe / Italy',41.90,12.50),
+        ('Iberian Peninsula / Spain',40.42,-3.70),
+        ('Northern Africa / Egypt',30.04,31.24),
+        ('Western Africa / Nigeria',6.52,3.38),
+        ('Eastern Africa / Kenya',-1.29,36.82),
+        ('Southern Africa / South Africa',-34.42,19.22),
+        ('Western Africa / Senegal',14.72,-17.47),
+        ('Eastern Asia / Japan',35.68,139.69),
+        ('South Asia / India',28.61,77.21),
+        ('Eastern Asia / China',39.90,116.41),
+        ('Southeastern Asia / Thailand',13.76,100.50),
+        ('Middle East / United Arab Emirates',25.20,55.27),
+        ('Southeastern Asia / Singapore',1.35,103.82),
+        ('Eastern Asia / South Korea',37.57,126.98),
+        ('Central Asia / Kazakhstan',43.24,76.89),
+        ('Southeastern Australia / Sydney',-33.87,151.21),
+        ('Western Australia / Perth',-31.95,115.86),
+        ('New Zealand / North Island',-36.85,174.76),
+        ('South Australia / Adelaide',-34.93,138.60),
+        ('Sub-Antarctic / Kerguelen Islands',-49.35,69.50),
+        ('Antarctica / McMurdo Station',-77.85,166.67),
+        ('Antarctica / Casey Station',-66.28,110.53),
+    ]
+    n=len(stations)
+    st_lat=np.array([s[1] for s in stations]); st_lon=np.array([s[2] for s in stations])
+    tec=np.random.uniform(4+sim_kp*2,12+sim_kp*25,n)
+    kp_pts=np.clip(sim_kp+np.random.uniform(-0.6,0.6,n),0,9)
+    def gps_status(k):
+        if k < 4: return 'Normal - Safe for Precision Farming'
+        if k < 7: return 'Slightly Delayed - Watch for GPS Drift'
+        return 'Degraded - High Risk of GPS Error'
+    def solar_effect(k):
+        if k < 4: return 'Quiet Sun - No Disruptions'
+        if k < 7: return 'Active Solar Wind - Use Caution'
+        return 'Geomagnetic Storm - Expect Signal Loss'
+    def risk_color(k):
+        if k < 4: return '#22C55E'
+        if k < 7: return '#FFB000'
+        return '#EF4444'
+    def risk_glow(k):
+        if k < 4: return 'rgba(34,197,94,0.16)'
+        if k < 7: return 'rgba(255,176,0,0.16)'
+        return 'rgba(239,68,68,0.20)'
+    node_colors=[risk_color(float(k)) for k in kp_pts]
+    glow_colors=[risk_glow(float(k)) for k in kp_pts]
+    custom=[(s[0],gps_status(float(kp_pts[i])),solar_effect(float(kp_pts[i]))) for i,s in enumerate(stations)]
+    fig=go.Figure()
+    fig.add_trace(go.Scattergeo(lat=st_lat,lon=st_lon,mode='markers',
+        marker=dict(size=tec/1.4+10,color=glow_colors,line=dict(width=0)),hoverinfo='skip',showlegend=False))
+    fig.add_trace(go.Scattergeo(lat=st_lat,lon=st_lon,mode='markers',
+        marker=dict(size=tec/3+5,color=node_colors,opacity=0.95,line=dict(width=1,color='#EAFEFF')),
+        customdata=custom,
+        hovertemplate=('<b>%{customdata[0]}</b><br>GPS Signal Status: %{customdata[1]}<br>'
+            'Solar Activity Effect: %{customdata[2]}<extra></extra>'),showlegend=False))
+    fig.update_geos(projection=dict(type='orthographic'),
+        showland=True,landcolor='#1E293B',
+        showocean=True,oceancolor='#0F172A',
+        showcoastlines=True,coastlinecolor='#00F0FF',coastlinewidth=1,
+        showcountries=True,countrycolor='#00F0FF',countrywidth=1.5,
+        showframe=False,showlakes=True,lakecolor='#0F172A',bgcolor='#070B19',
+        lataxis=dict(showgrid=True,gridcolor='rgba(0,240,255,0.15)',gridwidth=0.5),
+        lonaxis=dict(showgrid=True,gridcolor='rgba(0,240,255,0.15)',gridwidth=0.5))
+    fig.frames=[go.Frame(layout=dict(geo=dict(projection=dict(type='orthographic',rotation=dict(lon=i,lat=15))))) for i in range(0,360,5)]
+    fig.update_layout(margin=dict(l=0,r=0,t=0,b=0),paper_bgcolor='#070B19',plot_bgcolor='#070B19',
+        showlegend=False,height=600,
+        hoverlabel=dict(bgcolor='#070B19',bordercolor='#00F0FF',font=dict(color='#00F0FF',family='Share Tech Mono')),
+        updatemenus=[dict(type='buttons',showactive=False,direction='right',bgcolor='#0F172A',
+            bordercolor='#00F0FF',font=dict(color='#00F0FF',family='Share Tech Mono'),
+            x=0.01,y=1.09,xanchor='left',yanchor='top',
+            buttons=[dict(label='\u25B6 ROTATE',method='animate',
+                    args=[None,dict(frame=dict(duration=120,redraw=True),fromcurrent=True,transition=dict(duration=0))]),
+                dict(label='\u275A\u275A HOLD',method='animate',
+                    args=[[None],dict(frame=dict(duration=0,redraw=False),mode='immediate')])])])
+    st.plotly_chart(fig,use_container_width=True,config={'scrollZoom':True,'responsive':True,'displayModeBar':True})
 
 with tabs[2]:
     st.markdown('<h2 class="section-title">GPS PRECISION RADAR</h2>', unsafe_allow_html=True)
-    st.markdown('<div class="cyber-card">Visualizing physical offset between true coordinates and GPS-indicated position.</div>',unsafe_allow_html=True)
-    theta=np.linspace(0,2*np.pi,120); r=drift_val*np.ones_like(theta)
-    fig=go.Figure(); fig.add_trace(go.Scatterpolar(r=[0],theta=[0],mode='markers',marker=dict(size=12,color='#00F0FF')))
-    fig.add_trace(go.Scatterpolar(r=r,theta=theta,mode='lines',fill='toself',fillcolor='rgba(255,107,107,0.35)',line=dict(color='#FF6B6B',width=3)))
-    for ring in [1,3,5,10,20]:
-        if ring <= drift_val*1.8+5: fig.add_trace(go.Scatterpolar(r=[ring]*len(theta),theta=theta,mode='lines',line=dict(color='rgba(0,240,255,0.25)',width=1,dash='dot'),showlegend=False))
-    fig.update_layout(polar=dict(radialaxis=dict(range=[0,min(30,drift_val*1.8+4)])),paper_bgcolor='#0B0E14',font=dict(color='#e2e8f0'),showlegend=False,height=550)
-    st.plotly_chart(fig,use_container_width=True)
+    st.markdown('<div class="cyber-card">TACTICAL NAVIGATION HUD \u2014 true-position anchor vs. real-time GPS drift envelope.</div>',unsafe_allow_html=True)
+    theta_full=np.linspace(0,2*np.pi,240); theta_deg=np.degrees(theta_full)
+    status_color='#22C55E' if risk_level=='LOW' else ('#FFB000' if risk_level=='MEDIUM' else '#EF4444')
+    jitter='NOMINAL' if risk_level=='LOW' else ('ELEVATED' if risk_level=='MEDIUM' else 'SEVERE')
+    drift_bearing=45
+    fig=go.Figure()
+    for scale,op in [(1.0,0.30),(1.7,0.16),(2.5,0.07)]:
+        fig.add_trace(go.Scatterpolar(r=(drift_val*scale)*np.ones_like(theta_full),theta=theta_deg,mode='lines',
+            fill='toself',fillcolor=f'rgba(255,176,0,{op})',line=dict(color='rgba(255,176,0,0.45)',width=1),
+            hoverinfo='skip',showlegend=False))
+    for rr,op,w in [(1,0.10,1),(5,0.18,1),(10,0.28,1.2),(20,0.42,1.5)]:
+        fig.add_trace(go.Scatterpolar(r=[rr]*len(theta_deg),theta=theta_deg,mode='lines',
+            line=dict(color=f'rgba(0,240,255,{op})',width=w),hoverinfo='skip',showlegend=False))
+        fig.add_trace(go.Scatterpolar(r=[rr],theta=[135],mode='text',text=[f'\u00B1{rr}m'],
+            textfont=dict(color=f'rgba(0,240,255,{min(op+0.25,0.9)})',size=10,family='Share Tech Mono'),
+            hoverinfo='skip',showlegend=False))
+    fig.add_trace(go.Scatterpolar(r=[21.8]*4,theta=[90,0,270,180],mode='text',text=['N','E','S','W'],
+        textfont=dict(color='#00F0FF',size=17,family='Share Tech Mono'),hoverinfo='skip',showlegend=False))
+    fig.add_trace(go.Scatterpolar(r=[0,drift_val],theta=[0,drift_bearing],mode='lines',
+        line=dict(color='#FFB000',width=2,dash='dash'),hoverinfo='skip',showlegend=False))
+    fig.add_trace(go.Scatterpolar(r=[drift_val],theta=[drift_bearing],mode='markers+text',
+        marker=dict(symbol='x',size=15,color='#FFB000',line=dict(color='#FFB000',width=2)),
+        text=[f'  GPS FIX \u00B1{drift_val:.2f}m'],textposition='top center',
+        textfont=dict(color='#FFB000',size=11,family='Share Tech Mono'),
+        hovertemplate=f'CURRENT GPS FIX<br>OFFSET: \u00B1{drift_val:.2f} m<extra></extra>',showlegend=False))
+    fig.add_trace(go.Scatterpolar(r=[0],theta=[0],mode='markers',
+        marker=dict(symbol='star',size=24,color='#FFFFFF',line=dict(color='#00F0FF',width=2)),
+        hovertemplate='TRUE POSITION<br>ANCHOR LOCKED<extra></extra>',showlegend=False))
+    fig.add_trace(go.Scatterpolar(r=[0],theta=[0],mode='markers',
+        marker=dict(symbol='circle',size=8,color='#00FF9C'),hoverinfo='skip',showlegend=False))
+    fig.add_annotation(x=0.02,y=0.98,xref='paper',yref='paper',xanchor='left',yanchor='top',showarrow=False,
+        align='left',bordercolor=status_color,borderwidth=1.5,borderpad=8,bgcolor='rgba(7,11,25,0.85)',
+        font=dict(color=status_color,size=12,family='Share Tech Mono'),
+        text=(f'<b>\u25C6 NAV STATUS: {risk_level}</b><br>POSITION ERROR: \u00B1{drift_val:.2f} m<br>'
+              f'IONO JITTER: {jitter}<br>Kp INDEX: {sim_kp:.1f}  |  SATS: 32'))
+    fig.update_layout(
+        polar=dict(bgcolor='#0F172A',
+            radialaxis=dict(range=[0,22.5],showline=False,showticklabels=True,ticks='',
+                tickfont=dict(color='rgba(0,240,255,0.45)',size=9,family='Share Tech Mono'),
+                gridcolor='rgba(0,240,255,0.15)',gridwidth=1,tickvals=[0,5,10,15,20]),
+            angularaxis=dict(showline=False,gridcolor='rgba(0,240,255,0.15)',gridwidth=1,
+                tickfont=dict(color='rgba(0,240,255,0.45)',size=9,family='Share Tech Mono'))),
+        paper_bgcolor='#070B19',plot_bgcolor='#070B19',font=dict(color='#E2E8F0'),
+        showlegend=False,height=600,margin=dict(l=40,r=40,t=70,b=40))
+    st.plotly_chart(fig,use_container_width=True,config={'scrollZoom':True,'responsive':True})
 
 with tabs[3]:
     st.markdown('<h2 class="section-title">STORM SIMULATOR</h2>', unsafe_allow_html=True)
